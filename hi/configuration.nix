@@ -5,25 +5,43 @@
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   nixpkgs.config.allowUnfree = true;
 
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
-  boot.tmpOnTmpfs = true;
-  boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_2;
-  boot.kernelParams = [
-    "vt.default_red=0x28,0xcc,0x98,0xd7,0x45,0xb1,0x68,0xa8,0x92,0xfb,0xb8,0xfa,0x83,0xd3,0x8e,0xeb"
-    "vt.default_grn=0x28,0x24,0x97,0x99,0x85,0x62,0x9d,0x99,0x83,0x49,0xbb,0xbd,0xa5,0x86,0xc0,0xdb"
-    "vt.default_blu=0x28,0x1d,0x1a,0x21,0x88,0x86,0x6a,0x84,0x74,0x34,0x26,0x2f,0x98,0x9b,0x7c,0xb2"
-  ];
+  boot = {
+    tmpOnTmpfs = true;
+
+    kernelPackages = pkgs.linuxPackages_rpi4;
+    initrd.checkJournalingFS = false;
+    initrd.kernelModules = [ "xhci_pci" "usbhid" "uas" "usb_storage" ];
+    kernelParams = [
+      "8250.nr_uarts=1"
+      "console=tty1"
+      "cma=128M"
+      "vt.default_red=0x28,0xcc,0x98,0xd7,0x45,0xb1,0x68,0xa8,0x92,0xfb,0xb8,0xfa,0x83,0xd3,0x8e,0xeb"
+      "vt.default_grn=0x28,0x24,0x97,0x99,0x85,0x62,0x9d,0x99,0x83,0x49,0xbb,0xbd,0xa5,0x86,0xc0,0xdb"
+      "vt.default_blu=0x28,0x1d,0x1a,0x21,0x88,0x86,0x6a,0x84,0x74,0x34,0x26,0x2f,0x98,0x9b,0x7c,0xb2"
+    ];
+
+    loader.raspberryPi = {
+      enable = true;
+      version = 4;
+      firmwareConfig = ''
+        disable_overscan=1
+        dtparam=sd_poll_once=on
+        dtparam=audio=on
+      '';
+    };
+    loader.grub.enable = false;
+    loader.generic-extlinux-compatible.enable = false;
+  };
+
+  hardware.enableRedistributableFirmware = true;
+  hardware.raspberry-pi."4".fkms-3d.enable = true;
 
   zramSwap.enable = true;
 
   networking = {
-    hostName = "akyuro";
+    hostName = "kyoku-chan";
     useNetworkd = true;
-    wireless = {
-      enable = true;
-      environmentFile = ./wireless.secret;
-    };
+    firewall.enable = false;
   };
 
   time.timeZone = "Europe/Berlin";
@@ -59,6 +77,7 @@
   programs = {
     sway.enable = true;
     command-not-found.enable = false;
+    nix-ld.enable = true;
   };
 
   services = {
@@ -82,7 +101,9 @@
       vt = 7;
       settings = {
         default_session = {
-          command = "${pkgs.greetd.tuigreet}/bin/tuigreet -trc sway --remember-user-session";
+          # command = "${pkgs.greetd.tuigreet}/bin/tuigreet -trc sway --remember-user-session";
+          command = "sway";
+          user = "ercanar";
         };
       };
     };
@@ -101,7 +122,7 @@
 
     type = "overlay";
     options = let
-      dots = "${config.users.users.leonsch.home}/dotfiles";
+      dots = "${config.users.users.ercanar.home}/dotfiles";
     in "lowerdir=${dots}/lo,upperdir=${dots}/hi,workdir=${dots}/work";
   }];
   systemd.tmpfiles.rules = [
@@ -109,7 +130,7 @@
   ];
 
   users.mutableUsers = false;
-  users.users.leonsch = {
+  users.users.ercanar = {
     isNormalUser = true;
     extraGroups = [ "wheel" ];
     hashedPassword = "$y$j9T$zjEgVmMSgM4dbXcVwITTT.$hLUP9jj1sE.hCf0DIAb8Nzlu40HiIwhYVkKmSWUgKv5";
@@ -118,7 +139,7 @@
 
   home-manager.useUserPackages = true;
   home-manager.useGlobalPkgs = true;
-  home-manager.users.leonsch = { config, lib, pkgs, ... }: {
+  home-manager.users.ercanar = { config, lib, pkgs, ... }: {
     home = let mybin = "${config.home.homeDirectory}/bin"; in {
       stateVersion = "22.11";
 
@@ -138,7 +159,6 @@
 
       packages = with pkgs; [
         adwaita-qt
-        emacs
         feh
         file
         fuzzel
@@ -181,16 +201,30 @@
       configFile."fuzzel/fuzzel.ini".text = builtins.readFile ./fuzzel.ini;
     };
 
-    systemd.user.services.emacs = {
-      Install.WantedBy = [ "default.target" ];
+    systemd.user.services = let
+      Environment = let
+        system = sysargs.config.system.path;
+        user   = config.home.path;
+      in "PATH=${system}/bin:${system}/sbin:${user}/bin:${user}/sbin";
+    in {
+      emo = {
+        Install.WantedBy = [ "default.target" ];
+        Service = {
+          inherit Environment;
+          WorkingDirectory = "/home/ercanar/emo/program";
+          ExecStart = ''
+            ${pkgs.nix}/bin/nix run "github:thiagokokada/nix-alien#nix-alien" -- \
+            -l libsqlite3.so ./emo2 0 37812 ident
+          '';
+        };
+      };
 
-      Service = {
-        Environment = let
-          system = sysargs.config.system.path;
-          user   = config.home.path;
-        in "PATH=${system}/bin:${system}/sbin:${user}/bin:${user}/sbin";
-
-        ExecStart = "${pkgs.emacs}/bin/emacs --fg-daemon";
+      kvm-switcher = {
+        Install.WantedBy = [ "default.target" ];
+        Service = {
+          inherit Environment;
+          ExecStart = "/home/ercanar/dev/kvm-switcher/kvm-switcher.sh";
+        };
       };
     };
 
@@ -260,8 +294,8 @@
         enable = true;
         delta.enable = true;
 
-        userName = "Leon Schumacher";
-        userEmail = "leonsch@protonmail.com";
+        userName = "Hannes Wendt";
+        userEmail = "hanneswendt22@gmail.com";
 
         aliases = {
           a  = "add";
@@ -276,7 +310,7 @@
         };
 
         signing = {
-          key = "C743EE077172986F860FC0FE2F6FE1420970404C";
+          key = "4A61A00BB08DD9FCA34AC2F72FA14F2648079901";
           signByDefault = true;
         };
       };
@@ -391,7 +425,7 @@
         enable = true;
         settings = {
           main = {
-            font = "monospace:size=7";
+            font = "monospace:size=11";
           };
 
           colors = {
@@ -420,7 +454,7 @@
 
       swaylock.settings = {
         daemonize = true;
-        image = builtins.toString ./wallpaper.jpg;
+        image = builtins.toString ./wallpaper.png;
       };
 
       waybar = {
@@ -534,8 +568,8 @@
           };
 
           temperature = {
-            hwmon-path = "/sys/class/hwmon/hwmon4/temp1_input";
-            critical-threshold = 60;
+            hwmon-path = "/sys/class/hwmon/hwmon0/temp1_input";
+            critical-threshold = 70;
             format-critical = "{temperatureC}°C {icon}";
             format = "{temperatureC}°C {icon}";
             format-icons = [ "" "" "" "" "" ];
@@ -622,8 +656,8 @@
         };
 
         output."*" = {
-          bg = "${self}/wallpaper.jpg fill";
-          mode = "1920x1080";
+          bg = "${self}/wallpaper.png fill";
+          mode = "2560x1440";
         };
 
         seat."*".hide_cursor = "when-typing enable";
@@ -638,9 +672,8 @@
           "${mod}+Shift+Return" = "exec ${term}";
 
           "${mod}+Shift+a" = "exec ${term} -e ${pkgs.pulsemixer}/bin/pulsemixer";
-          "${mod}+c"       = "exec ${pkgs.discord}/bin/discord";
+          # "${mod}+c"       = "exec ${pkgs.discord}/bin/discord";
           "${mod}+d"       = "exec ${menu}";
-          "${mod}+e"       = "exec ${pkgs.emacs}/bin/emacsclient -cne '(my/dashboard)'";
           "${mod}+i"       = "exec ${term} -e ${pkgs.htop}/bin/htop";
           "${mod}+m"       = "exec ${term} -e ${pkgs.ncmpcpp}/bin/ncmpcpp";
           "${mod}+w"       = "exec ${pkgs.firefox}/bin/firefox";

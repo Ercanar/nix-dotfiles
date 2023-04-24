@@ -8,19 +8,23 @@
     nix-index-database.url = "github:Mic92/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
 
-    lanzaboote.url = "github:myaats/lanzaboote";
-    lanzaboote.inputs.nixpkgs.follows = "nixpkgs";
+    # lanzaboote.url = "github:myaats/lanzaboote";
+    # lanzaboote.inputs.nixpkgs.follows = "nixpkgs";
+
+    nixos-hardware.url = "github:NixOS/nixos-hardware/master";
+    # nixos-hardware.inputs.nixpkgs.follows = "nixpkgs"; # input does not exist?
   };
 
-  outputs = { self, nixpkgs, nix-index-database, lanzaboote, ... }@attrs: {
-    nixosConfigurations.akyuro = nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
+  outputs = { self, nixpkgs, nix-index-database, nixos-hardware, ... }@attrs: {
+    nixosConfigurations."kyoku-chan" = nixpkgs.lib.nixosSystem {
+      system = "aarch64-linux";
       specialArgs = attrs;
       modules = [
         ./configuration.nix
         ./hardware-configuration.nix
         nix-index-database.nixosModules.nix-index
-        lanzaboote.nixosModules.lanzaboote
+        # lanzaboote.nixosModules.lanzaboote
+        nixos-hardware.nixosModules.raspberry-pi-4
       ];
     };
   };
