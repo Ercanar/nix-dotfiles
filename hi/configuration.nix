@@ -40,22 +40,10 @@
 
   zramSwap.enable = true;
 
-  security.pam.services = {
-    sudo.u2fAuth = true;
-  };
-
   networking = {
     hostName = "kyoku-chan";
     useNetworkd = true;
-<<<<<<< HEAD
     firewall.enable = false;
-=======
-    localCommands = "${pkgs.util-linux}/bin/rfkill unblock wifi";
-    wireless = {
-      enable = true;
-      environmentFile = ./wireless.secret;
-    };
->>>>>>> 013899a86819d997d96e8a5d8a9687fe3d741477
   };
 
   time.timeZone = "Europe/Berlin";
@@ -130,8 +118,6 @@
         };
       };
     };
-
-    tlp.enable = true;
   };
 
   xdg.portal = {
@@ -140,10 +126,6 @@
     extraPortals = with pkgs; [
       xdg-desktop-portal-gtk
     ];
-  };
-
-  virtualisation = {
-    docker.enable = true;
   };
 
   systemd.extraConfig = "DefaultTimeoutStopSec=10s";
@@ -156,17 +138,9 @@
     wantedBy = [ "local-fs.target" ];
 
     type = "overlay";
-<<<<<<< HEAD
     options = let
       dots = "${config.users.users.ercanar.home}/dotfiles";
     in "lowerdir=${dots}/lo,upperdir=${dots}/hi,workdir=${dots}/work";
-=======
-    options =
-      let
-        dots = "${config.users.users.leonsch.home}/dotfiles";
-      in
-      "lowerdir=${dots}/lo,upperdir=${dots}/hi,workdir=${dots}/work";
->>>>>>> 013899a86819d997d96e8a5d8a9687fe3d741477
   }];
   systemd.tmpfiles.rules = [
     "d /var/cache/tuigreet 0755 greeter greeter"
@@ -202,12 +176,6 @@
 
       packages = with pkgs; [
         adwaita-qt
-<<<<<<< HEAD
-=======
-        ccls
-        docker-client
-        emacs
->>>>>>> 013899a86819d997d96e8a5d8a9687fe3d741477
         feh
         file
         fuzzel
@@ -275,7 +243,6 @@
       '';
     };
 
-<<<<<<< HEAD
     systemd.user.services = let
       Environment = let
         system = sysargs.config.system.path;
@@ -299,56 +266,14 @@
         Service = {
           inherit Environment;
           ExecStart = "/home/ercanar/dev/kvm-switcher/kvm-switcher.sh";
-=======
-    systemd.user.services =
-      let
-        Install.WantedBy = [ "default.target" ];
-        Environment =
-          let
-            system = sysargs.config.system.path;
-            user = config.home.path;
-          in
-          "PATH=${system}/bin:${system}/sbin:${user}/bin:${user}/sbin";
-      in
-      {
-        emacs = {
-          inherit Install;
-          Unit.Requires = [ "async-git-clone.service" ];
-          Service = {
-            inherit Environment;
-            ExecStart = "${pkgs.emacs}/bin/emacs --fg-daemon";
-          };
-        };
-        async-git-clone = {
-          inherit Install;
-          Unit = {
-            StartLimitIntervalSec = "1d";
-            StartLimitBurst = 5;
-          };
-          Service = {
-            inherit Environment;
-            ExecStart = "${pkgs.bash}/bin/bash " + ./async-git-clone.sh;
-            Restart = "on-failure";
-            RestartSec = 10;
-          };
->>>>>>> 013899a86819d997d96e8a5d8a9687fe3d741477
         };
       };
+    };
 
     services = {
       mako = {
         enable = true;
         defaultTimeout = 5000;
-      };
-
-      mpd = {
-        enable = true;
-        extraConfig = ''
-          audio_output {
-              type "pipewire"
-              name "pipewire"
-          }
-        '';
       };
 
       gpg-agent = {
@@ -376,6 +301,8 @@
     };
 
     programs = {
+      firefox.enable = true;
+
       bash = {
         enable = true;
         enableCompletion = true;
@@ -613,7 +540,6 @@
           ];
 
           modules-right = [
-            "mpd"
             "pulseaudio"
             "network"
             "cpu"
@@ -632,37 +558,10 @@
             format = "{icon}";
             format-icons = {
               "0" = "";
-              "1" = "";
-              "2" = "󰙯";
-              "3" = "";
+              "1" = "󰙯";
+              "3" = "";
               "9" = "󰌆";
             };
-          };
-
-          mpd = {
-            format = "{stateIcon} {consumeIcon}{randomIcon}{repeatIcon}{singleIcon}{artist} - {album} - {title} ({elapsedTime:%M:%S}/{totalTime:%M:%S}) ⸨{songPosition}|{queueLength}⸩ {volume}%  ";
-            format-stopped = "{consumeIcon}{randomIcon}{repeatIcon}{singleIcon}Stopped 󰝛 ";
-            format-disconnected = "Disconnected 󰀦 ";
-            unknown-tag = "";
-            interval = 2;
-            consume-icons = {
-              on = " ";
-            };
-            random-icons = {
-              on = " ";
-            };
-            repeat-icons = {
-              on = "󰑖 ";
-            };
-            single-icons = {
-              on = "󰑘 ";
-            };
-            state-icons = {
-              playing = " ";
-              paused = " ";
-            };
-            tooltip-format = "MPD (connected)";
-            tooltip-format-disconnected = "MPD (disconnected)";
           };
 
           pulseaudio = {
@@ -749,15 +648,14 @@
           };
         };
       };
+    };
 
-<<<<<<< HEAD
     wayland.windowManager.sway = let
       term = "${pkgs.foot}/bin/foot";
       menu = "${pkgs.fuzzel}/bin/fuzzel";
       mod  = "Mod4";
     in {
       enable = true;
-      extraConfig = "set $term ${term}";
       config = {
         modifier = mod;
 
@@ -802,6 +700,7 @@
 
         startup = [
           { command = "terminal"; }
+          { command = "${pkgs.keepassxc}/bin/keepassxc"; }
         ];
 
         keybindings = {
@@ -810,11 +709,10 @@
           "${mod}+Shift+Return" = "exec ${term}";
 
           "${mod}+Shift+a" = "exec ${term} -e ${pkgs.pulsemixer}/bin/pulsemixer";
-          # "${mod}+c"       = "exec ${pkgs.discord}/bin/discord";
+          "${mod}+b"       = "exec systemctl --user restart waybar";
           "${mod}+d"       = "exec ${menu}";
           "${mod}+i"       = "exec ${term} -e ${pkgs.htop}/bin/htop";
-          "${mod}+m"       = "exec ${term} -e ${pkgs.ncmpcpp}/bin/ncmpcpp";
-          "${mod}+w"       = "exec ${pkgs.firefox}/bin/firefox";
+          "${mod}+Shift+w" = "exec ${pkgs.firefox}/bin/firefox";
           "${mod}+x"       = "exec ${pkgs.swaylock}/bin/swaylock";
 
           # special
@@ -843,6 +741,7 @@
           "${mod}+Shift+Up"    = "move up";
           "${mod}+Shift+Down"  = "move down";
 
+          "${mod}+dead_circumflex" = "workspace number 0";
           "${mod}+0" = "workspace number 0";
           "${mod}+1" = "workspace number 1";
           "${mod}+2" = "workspace number 2";
@@ -854,6 +753,7 @@
           "${mod}+8" = "workspace number 8";
           "${mod}+9" = "workspace number 9";
 
+          "${mod}+Shift+dead_circumflex" = "move container to workspace number 0";
           "${mod}+Shift+0" = "move container to workspace number 0";
           "${mod}+Shift+1" = "move container to workspace number 1";
           "${mod}+Shift+2" = "move container to workspace number 2";
@@ -868,171 +768,19 @@
 
         workspaceAutoBackAndForth = true;
 
-        bars = [{
-          command = "${pkgs.waybar}/bin/waybar";
-          position = "top";
-        }];
-=======
-      firefox = {
-        enable = true;
-        # profiles."default" = {
-        # };
->>>>>>> 013899a86819d997d96e8a5d8a9687fe3d741477
-      };
-    };
+        bars = [];
 
-    wayland.windowManager.sway =
-      let
-        term = "${pkgs.foot}/bin/foot";
-        menu = "${pkgs.fuzzel}/bin/fuzzel";
-        mod = "Mod4";
-      in
-      {
-        enable = true;
-        systemdIntegration = true;
-        config = {
-          modifier = mod;
-
-          focus.followMouse = true;
-
-          window = {
-            border = 1;
-            titlebar = false;
-            hideEdgeBorders = "both";
-          };
-
-          floating = {
-            border = 1;
-            titlebar = false;
-            modifier = mod;
-          };
-
-          gaps = {
-            inner = 2;
-            smartGaps = true;
-            smartBorders = "on";
-          };
-
-          input."type:keyboard" = {
-            repeat_delay = "300";
-            repeat_rate = "50";
-            xkb_layout = "de";
-            xkb_options = "ctrl:nocaps,compose:sclk";
-          };
-
-          input."type:touchpad" = {
-            dwt = "enabled";
-            tap = "enabled";
-          };
-
-          output."*" = {
-            bg = "${self}/wallpaper.jpg fill";
-            mode = "1920x1080";
-          };
-
-          seat."*".hide_cursor = "when-typing enable";
-
-          startup = [
-            { command = "terminal"; }
-            { command = "${pkgs.keepassxc}/bin/keepassxc"; }
-          ];
-
-          keybindings = {
-            # programs
-            "${mod}+Return" = "exec terminal";
-            "${mod}+Shift+Return" = "exec ${term}";
-
-            "${mod}+a" = "exec dropdown ${pkgs.libqalculate}/bin/qalc";
-            "${mod}+Shift+a" = "exec dropdown ${pkgs.pulsemixer}/bin/pulsemixer";
-            "${mod}+c" = "exec ${pkgs.discord}/bin/discord --enable-features=UseOzonePlatform --ozone-platform=wayland";
-            "${mod}+d" = "exec ${menu}";
-            "${mod}+e" = "exec ${pkgs.emacs}/bin/emacsclient -cne '(my/dashboard)'";
-            "${mod}+i" = "exec ${term} -e ${pkgs.htop}/bin/htop";
-            "${mod}+m" = "exec ${term} -e ${pkgs.ncmpcpp}/bin/ncmpcpp";
-            "${mod}+w" = "exec ${pkgs.firefox}/bin/firefox";
-            "${mod}+x" = "exec loginctl lock-session";
-
-            # special
-            "${mod}+Backspace" = "exec prompt Shutdown? poweroff";
-            "${mod}+Shift+Backspace" = "exec prompt Reboot? reboot";
-            "${mod}+Control+Backspace" = "exec prompt Suspend? systemctl suspend";
-            "${mod}+Escape" = "exec prompt Logout? pkill sway";
-
-            "Print" = ''
-              exec \
-              rm -f "$XDG_RUNTIME_DIR/screenshot.png" && \
-              ${pkgs.flameshot}/bin/flameshot gui -p "$XDG_RUNTIME_DIR/screenshot.png" && \
-              ${pkgs.wl-clipboard}/bin/wl-copy < "$XDG_RUNTIME_DIR/screenshot.png"
-            '';
-
-            # media keys
-            "XF86AudioLowerVolume" = "exec audio-helper ${pkgs.pulsemixer} change -10";
-            "XF86AudioRaiseVolume" = "exec audio-helper ${pkgs.pulsemixer} change +10";
-            "XF86AudioMute" = "exec audio-helper ${pkgs.pulsemixer} mute";
-            "XF86AudioMicMute" = "exec audio-helper ${pkgs.pulsemixer} micmute";
-            "XF86AudioPlay" = "exec audio-helper ${pkgs.mpc-cli} play";
-            "XF86AudioPrev" = "exec audio-helper ${pkgs.mpc-cli} prev";
-            "XF86AudioNext" = "exec audio-helper ${pkgs.mpc-cli} next";
-            "XF86MonBrightnessUp" = "exec brightness-helper ${pkgs.brightnessctl} +10";
-            "XF86MonBrightnessDown" = "exec brightness-helper ${pkgs.brightnessctl} -10";
-
-            # WM
-            "${mod}+f" = "fullscreen";
-            "${mod}+Shift+f" = "floating toggle";
-            "${mod}+h" = "move scratchpad";
-            "${mod}+Shift+h" = "scratchpad show";
-            "${mod}+q" = "kill";
-
-            "${mod}+Tab" = "workspace back_and_forth";
-            "${mod}+space" = "focus mode_toggle";
-
-            "${mod}+Left" = "focus left";
-            "${mod}+Right" = "focus right";
-            "${mod}+Up" = "focus up";
-            "${mod}+Down" = "focus down";
-
-            "${mod}+Shift+Left" = "move left";
-            "${mod}+Shift+Right" = "move right";
-            "${mod}+Shift+Up" = "move up";
-            "${mod}+Shift+Down" = "move down";
-
-            "${mod}+0" = "workspace number 0";
-            "${mod}+1" = "workspace number 1";
-            "${mod}+2" = "workspace number 2";
-            "${mod}+3" = "workspace number 3";
-            "${mod}+4" = "workspace number 4";
-            "${mod}+5" = "workspace number 5";
-            "${mod}+6" = "workspace number 6";
-            "${mod}+7" = "workspace number 7";
-            "${mod}+8" = "workspace number 8";
-            "${mod}+9" = "workspace number 9";
-
-            "${mod}+Shift+0" = "move container to workspace number 0";
-            "${mod}+Shift+1" = "move container to workspace number 1";
-            "${mod}+Shift+2" = "move container to workspace number 2";
-            "${mod}+Shift+3" = "move container to workspace number 3";
-            "${mod}+Shift+4" = "move container to workspace number 4";
-            "${mod}+Shift+5" = "move container to workspace number 5";
-            "${mod}+Shift+6" = "move container to workspace number 6";
-            "${mod}+Shift+7" = "move container to workspace number 7";
-            "${mod}+Shift+8" = "move container to workspace number 8";
-            "${mod}+Shift+9" = "move container to workspace number 9";
-          };
-
-          workspaceAutoBackAndForth = true;
-
-          bars = [ ];
-
-          assigns = {
-            "2" = [{ app_id = "discord"; }];
-            "9" = [{ app_id = "org.keepassxc.KeePassXC"; }];
-          };
+        assigns = {
+          "3" = [{ app_id = "firefox"; }];
+          "9" = [{ app_id = "org.keepassxc.KeePassXC"; }];
         };
-        extraConfig = ''
-          set $term ${term}
-          for_window [app_id="dropdown.*"] floating enable
-          for_window [app_id="dropdown.*"] resize set 800 400
-        '';
       };
+
+      extraConfig = ''
+        set $term ${term}
+        for_window [app_id="dropdown.*"] floating enable
+        for_window [app_id="dropdown.*"] resize set 800 400
+      '';
+    };
   };
 }

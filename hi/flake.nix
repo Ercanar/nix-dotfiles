@@ -15,7 +15,7 @@
     # nixos-hardware.inputs.nixpkgs.follows = "nixpkgs"; # input does not exist?
   };
 
-  outputs = { self, nixpkgs, nix-index-database, nixos-hardware, ... }@attrs: {
+  outputs = { self, nixpkgs, home-manager, nix-index-database, nixos-hardware, ... }@attrs: {
     nixosConfigurations."kyoku-chan" = nixpkgs.lib.nixosSystem {
       system = "aarch64-linux";
       specialArgs = attrs;
