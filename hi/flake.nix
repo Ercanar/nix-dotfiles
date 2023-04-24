@@ -22,6 +22,7 @@
       modules = [
         ./configuration.nix
         ./hardware-configuration.nix
+        home-manager.nixosModules.home-manager
         nix-index-database.nixosModules.nix-index
         # lanzaboote.nixosModules.lanzaboote
         nixos-hardware.nixosModules.raspberry-pi-4

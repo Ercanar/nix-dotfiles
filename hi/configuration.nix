@@ -1,8 +1,10 @@
-{ self, config, pkgs, home-manager, ... }@sysargs: {
-  imports = [ home-manager.nixosModule ];
-
+{ self, config, pkgs, ... }@sysargs: {
   system.stateVersion = "22.11";
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  nix.extraOptions = ''
+    keep-outputs = true
+    keep-derivations = true
+  '';
   nixpkgs.config.allowUnfree = true;
 
   boot = {
@@ -38,10 +40,22 @@
 
   zramSwap.enable = true;
 
+  security.pam.services = {
+    sudo.u2fAuth = true;
+  };
+
   networking = {
     hostName = "kyoku-chan";
     useNetworkd = true;
+<<<<<<< HEAD
     firewall.enable = false;
+=======
+    localCommands = "${pkgs.util-linux}/bin/rfkill unblock wifi";
+    wireless = {
+      enable = true;
+      environmentFile = ./wireless.secret;
+    };
+>>>>>>> 013899a86819d997d96e8a5d8a9687fe3d741477
   };
 
   time.timeZone = "Europe/Berlin";
@@ -72,7 +86,16 @@
   environment.variables = {
     GTK_THEME = "Adwaita:dark";
     QT_STYLE_OVERRIDE = "Adwaita-Dark";
+    PKG_CONFIG_PATH = "/run/current-system/sw/lib/pkgconfig/";
+    SDL_VIDEODRIVER = "wayland";
+    _JAVA_AWT_WM_NONREPARENTING = "1";
+    QT_QPA_PLATFORM = "wayland";
+    XDG_CURRENT_DESKTOP = "sway";
+    XDG_SESSION_DESKTOP = "sway";
   };
+  environment.systemPackages = with pkgs; [
+    libsodium.dev
+  ];
 
   programs = {
     sway.enable = true;
@@ -111,6 +134,18 @@
     tlp.enable = true;
   };
 
+  xdg.portal = {
+    enable = true;
+    wlr.enable = true;
+    extraPortals = with pkgs; [
+      xdg-desktop-portal-gtk
+    ];
+  };
+
+  virtualisation = {
+    docker.enable = true;
+  };
+
   systemd.extraConfig = "DefaultTimeoutStopSec=10s";
   systemd.network.wait-online.enable = false;
   systemd.mounts = [{
@@ -121,9 +156,17 @@
     wantedBy = [ "local-fs.target" ];
 
     type = "overlay";
+<<<<<<< HEAD
     options = let
       dots = "${config.users.users.ercanar.home}/dotfiles";
     in "lowerdir=${dots}/lo,upperdir=${dots}/hi,workdir=${dots}/work";
+=======
+    options =
+      let
+        dots = "${config.users.users.leonsch.home}/dotfiles";
+      in
+      "lowerdir=${dots}/lo,upperdir=${dots}/hi,workdir=${dots}/work";
+>>>>>>> 013899a86819d997d96e8a5d8a9687fe3d741477
   }];
   systemd.tmpfiles.rules = [
     "d /var/cache/tuigreet 0755 greeter greeter"
@@ -132,7 +175,7 @@
   users.mutableUsers = false;
   users.users.ercanar = {
     isNormalUser = true;
-    extraGroups = [ "wheel" ];
+    extraGroups = [ "wheel" "docker" ];
     hashedPassword = "$y$j9T$zjEgVmMSgM4dbXcVwITTT.$hLUP9jj1sE.hCf0DIAb8Nzlu40HiIwhYVkKmSWUgKv5";
     openssh.authorizedKeys.keys = [ "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJVieLCkWGImVI9c7D0Z0qRxBAKf0eaQWUfMn0uyM/Ql" ];
   };
@@ -159,23 +202,49 @@
 
       packages = with pkgs; [
         adwaita-qt
+<<<<<<< HEAD
+=======
+        ccls
+        docker-client
+        emacs
+>>>>>>> 013899a86819d997d96e8a5d8a9687fe3d741477
         feh
         file
         fuzzel
+        gcc
+        gocryptfs
+        grim
         jq
-        keepassxc
         libnotify
         lsof
         mpv
+        nil
+        nixpkgs-fmt
         pciutils
-        pulsemixer
+        pkg-config
         wl-clipboard
+        xdg_utils
       ];
 
       sessionPath = [ mybin ];
 
       file = {
         "Desktop".text = "";
+
+        "${mybin}/audio-helper" = {
+          executable = true;
+          source = ./audio-helper.sh;
+        };
+
+        "${mybin}/brightness-helper" = {
+          executable = true;
+          source = ./brightness-helper.sh;
+        };
+
+        "${mybin}/dropdown" = {
+          executable = true;
+          source = ./dropdown.sh;
+        };
 
         "${mybin}/new-pane-here" = {
           executable = true;
@@ -198,9 +267,15 @@
       enable = true;
       userDirs.enable = true;
 
-      configFile."fuzzel/fuzzel.ini".text = builtins.readFile ./fuzzel.ini;
+      configFile."fuzzel/fuzzel.ini".source = ./fuzzel.ini;
+      dataFile."dbus-1/services/mako-path-fix.service".text = ''
+        [D-BUS Service]
+        Name=org.freedesktop.Notifications
+        Exec=/usr/bin/env PATH=/run/current-system/sw/bin ${pkgs.mako}/bin/mako
+      '';
     };
 
+<<<<<<< HEAD
     systemd.user.services = let
       Environment = let
         system = sysargs.config.system.path;
@@ -224,9 +299,41 @@
         Service = {
           inherit Environment;
           ExecStart = "/home/ercanar/dev/kvm-switcher/kvm-switcher.sh";
+=======
+    systemd.user.services =
+      let
+        Install.WantedBy = [ "default.target" ];
+        Environment =
+          let
+            system = sysargs.config.system.path;
+            user = config.home.path;
+          in
+          "PATH=${system}/bin:${system}/sbin:${user}/bin:${user}/sbin";
+      in
+      {
+        emacs = {
+          inherit Install;
+          Unit.Requires = [ "async-git-clone.service" ];
+          Service = {
+            inherit Environment;
+            ExecStart = "${pkgs.emacs}/bin/emacs --fg-daemon";
+          };
+        };
+        async-git-clone = {
+          inherit Install;
+          Unit = {
+            StartLimitIntervalSec = "1d";
+            StartLimitBurst = 5;
+          };
+          Service = {
+            inherit Environment;
+            ExecStart = "${pkgs.bash}/bin/bash " + ./async-git-clone.sh;
+            Restart = "on-failure";
+            RestartSec = 10;
+          };
+>>>>>>> 013899a86819d997d96e8a5d8a9687fe3d741477
         };
       };
-    };
 
     services = {
       mako = {
@@ -248,6 +355,24 @@
         enable = true;
         pinentryFlavor = "qt";
       };
+
+      flameshot.enable = true;
+
+      swayidle = {
+        enable = true;
+        events = [
+          { event = "lock"; command = "${pkgs.swaylock}/bin/swaylock"; }
+          { event = "before-sleep"; command = "${pkgs.systemd}/bin/loginctl lock-session"; }
+        ];
+        timeouts = [
+          { timeout = 300; command = "${pkgs.systemd}/bin/loginctl lock-session"; }
+          {
+            timeout = 300;
+            command = "${pkgs.sway}/bin/swaymsg 'output * dpms off'";
+            resumeCommand = "${pkgs.sway}/bin/swaymsg 'output * dpms on'";
+          }
+        ];
+      };
     };
 
     programs = {
@@ -267,12 +392,17 @@
         settings = {
           character = {
             success_symbol = "[λ](bold green)";
-            error_symbol   = "[λ](bold red)";
+            error_symbol = "[λ](bold red)";
           };
         };
       };
 
       zoxide.enable = true;
+
+      direnv = {
+        enable = true;
+        nix-direnv.enable = true;
+      };
 
       tmux = {
         enable = true;
@@ -292,20 +422,25 @@
 
       git = {
         enable = true;
-        delta.enable = true;
+        delta = {
+          enable = true;
+          options = {
+            side-by-side = true;
+          };
+        };
 
         userName = "Hannes Wendt";
         userEmail = "hanneswendt22@gmail.com";
 
         aliases = {
-          a  = "add";
-          c  = "commit";
-          d  = "diff";
-          l  = "log --graph --abbrev-commit --decorate --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %aN%C(reset)%C(bold yellow)%d%C(reset)' --all";
+          a = "add";
+          c = "commit";
+          d = "diff";
+          l = "log --graph --abbrev-commit --decorate --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %aN%C(reset)%C(bold yellow)%d%C(reset)' --all";
           pl = "pull";
           ps = "push";
-          r  = "restore";
-          s  = "status";
+          r = "restore";
+          s = "status";
           sf = "submodule foreach";
         };
 
@@ -313,6 +448,8 @@
           key = "4A61A00BB08DD9FCA34AC2F72FA14F2648079901";
           signByDefault = true;
         };
+
+        extraConfig.pull.rebase = false;
       };
 
       htop = {
@@ -346,13 +483,13 @@
             TIME
             COMM
           ];
-        }  // (with config.lib.htop; leftMeters [
-          (bar  "AllCPUs")
-          (bar  "Memory")
-          (bar  "Zram")
-          (bar  "DiskIO")
-          (bar  "NetworkIO")
-          (bar  "Load")
+        } // (with config.lib.htop; leftMeters [
+          (bar "AllCPUs")
+          (bar "Memory")
+          (bar "Zram")
+          (bar "DiskIO")
+          (bar "NetworkIO")
+          (bar "Load")
           (text "Clock")
         ]) // (with config.lib.htop; rightMeters [
           (text "AllCPUs")
@@ -373,42 +510,42 @@
         };
       };
 
-      neovim = let
-        customPlugins = {
-          autoclose = pkgs.vimUtils.buildVimPlugin {
-            name = "autoclose";
-            src = pkgs.fetchgit {
-              url = "https://github.com/m4xshen/autoclose.nvim";
-              rev = "389f7731f1fc508f5d5a6bdfef166901d8d1fc10";
-              sha256 = "8IrJdoDXrNvIKuk9uIUragmBqKggf4b97c7XgZ0tYcM=";
+      neovim =
+        let
+          customPlugins = {
+            autoclose = pkgs.vimUtils.buildVimPlugin {
+              name = "autoclose";
+              src = pkgs.fetchgit {
+                url = "https://github.com/m4xshen/autoclose.nvim";
+                rev = "c4db42ffc0edbd244502be951c142df0c8a7e582";
+                sha256 = "hxizkj9pIEvdps4f1hl0eGt0pNVHd2ejMlTQNeis404=";
+              };
             };
           };
-        };
-        allPlugins = pkgs.vimPlugins // customPlugins;
-      in {
-        enable = true;
-        defaultEditor = true;
-        viAlias = true;
-        vimAlias = true;
-        vimdiffAlias = true;
-
-        coc = {
+          allPlugins = pkgs.vimPlugins // customPlugins;
+        in
+        {
           enable = true;
-          pluginConfig = builtins.readFile ./coc.vim;
+          defaultEditor = true;
+          viAlias = true;
+          vimAlias = true;
+          vimdiffAlias = true;
+
+          coc = {
+            enable = true;
+            pluginConfig = builtins.readFile ./coc.vim;
+          };
+
+          plugins = with allPlugins; [
+            airline
+            autoclose
+            gitgutter
+            vim-nix
+            { plugin = suda-vim; config = "let g:suda_smart_edit = 1"; }
+          ];
+
+          extraConfig = builtins.readFile ./init.vim;
         };
-
-        plugins = with allPlugins; [
-          airline
-          autoclose
-          gitgutter
-          vim-nix
-          { plugin = suda-vim; config = "let g:suda_smart_edit = 1"; }
-        ];
-
-        extraConfig = builtins.readFile ./init.vim;
-      };
-
-      go.enable = true;
 
       hyfetch = {
         enable = true;
@@ -429,25 +566,25 @@
           };
 
           colors = {
-            alpha      = "0.9";
+            alpha = "0.9";
             foreground = "ebdbb2";
             background = "282828";
-            regular0   = "282828";
-            regular1   = "cc241d";
-            regular2   = "98971a";
-            regular3   = "d79921";
-            regular4   = "458588";
-            regular5   = "b16286";
-            regular6   = "689d6a";
-            regular7   = "a89984";
-            bright0    = "928374";
-            bright1    = "fb4934";
-            bright2    = "b8bb26";
-            bright3    = "fabd2f";
-            bright4    = "83a598";
-            bright5    = "d3869b";
-            bright6    = "8ec07c";
-            bright7    = "ebdbb2";
+            regular0 = "282828";
+            regular1 = "cc241d";
+            regular2 = "98971a";
+            regular3 = "d79921";
+            regular4 = "458588";
+            regular5 = "b16286";
+            regular6 = "689d6a";
+            regular7 = "a89984";
+            bright0 = "928374";
+            bright1 = "fb4934";
+            bright2 = "b8bb26";
+            bright3 = "fabd2f";
+            bright4 = "83a598";
+            bright5 = "d3869b";
+            bright6 = "8ec07c";
+            bright7 = "ebdbb2";
           };
         };
       };
@@ -459,6 +596,7 @@
 
       waybar = {
         enable = true;
+        systemd.enable = true;
         style = ./waybar.css;
 
         settings.mainBar = {
@@ -588,7 +726,7 @@
             };
 
             format = "{time} {capacity}% {icon}";
-            format-charging = "{time} {capacity}% 󰂄";
+            format-charging = "{time} {capacity}% {icon} 󱐋";
             format-plugged = "{capacity}%  ";
             format-icons = [ "󰁺" "󰁻" "󰁼" "󰁽" "󰁾" "󰁿" "󰂀" "󰂁" "󰂂" "󰁹" ];
           };
@@ -611,8 +749,8 @@
           };
         };
       };
-    };
 
+<<<<<<< HEAD
     wayland.windowManager.sway = let
       term = "${pkgs.foot}/bin/foot";
       menu = "${pkgs.fuzzel}/bin/fuzzel";
@@ -734,7 +872,167 @@
           command = "${pkgs.waybar}/bin/waybar";
           position = "top";
         }];
+=======
+      firefox = {
+        enable = true;
+        # profiles."default" = {
+        # };
+>>>>>>> 013899a86819d997d96e8a5d8a9687fe3d741477
       };
     };
+
+    wayland.windowManager.sway =
+      let
+        term = "${pkgs.foot}/bin/foot";
+        menu = "${pkgs.fuzzel}/bin/fuzzel";
+        mod = "Mod4";
+      in
+      {
+        enable = true;
+        systemdIntegration = true;
+        config = {
+          modifier = mod;
+
+          focus.followMouse = true;
+
+          window = {
+            border = 1;
+            titlebar = false;
+            hideEdgeBorders = "both";
+          };
+
+          floating = {
+            border = 1;
+            titlebar = false;
+            modifier = mod;
+          };
+
+          gaps = {
+            inner = 2;
+            smartGaps = true;
+            smartBorders = "on";
+          };
+
+          input."type:keyboard" = {
+            repeat_delay = "300";
+            repeat_rate = "50";
+            xkb_layout = "de";
+            xkb_options = "ctrl:nocaps,compose:sclk";
+          };
+
+          input."type:touchpad" = {
+            dwt = "enabled";
+            tap = "enabled";
+          };
+
+          output."*" = {
+            bg = "${self}/wallpaper.jpg fill";
+            mode = "1920x1080";
+          };
+
+          seat."*".hide_cursor = "when-typing enable";
+
+          startup = [
+            { command = "terminal"; }
+            { command = "${pkgs.keepassxc}/bin/keepassxc"; }
+          ];
+
+          keybindings = {
+            # programs
+            "${mod}+Return" = "exec terminal";
+            "${mod}+Shift+Return" = "exec ${term}";
+
+            "${mod}+a" = "exec dropdown ${pkgs.libqalculate}/bin/qalc";
+            "${mod}+Shift+a" = "exec dropdown ${pkgs.pulsemixer}/bin/pulsemixer";
+            "${mod}+c" = "exec ${pkgs.discord}/bin/discord --enable-features=UseOzonePlatform --ozone-platform=wayland";
+            "${mod}+d" = "exec ${menu}";
+            "${mod}+e" = "exec ${pkgs.emacs}/bin/emacsclient -cne '(my/dashboard)'";
+            "${mod}+i" = "exec ${term} -e ${pkgs.htop}/bin/htop";
+            "${mod}+m" = "exec ${term} -e ${pkgs.ncmpcpp}/bin/ncmpcpp";
+            "${mod}+w" = "exec ${pkgs.firefox}/bin/firefox";
+            "${mod}+x" = "exec loginctl lock-session";
+
+            # special
+            "${mod}+Backspace" = "exec prompt Shutdown? poweroff";
+            "${mod}+Shift+Backspace" = "exec prompt Reboot? reboot";
+            "${mod}+Control+Backspace" = "exec prompt Suspend? systemctl suspend";
+            "${mod}+Escape" = "exec prompt Logout? pkill sway";
+
+            "Print" = ''
+              exec \
+              rm -f "$XDG_RUNTIME_DIR/screenshot.png" && \
+              ${pkgs.flameshot}/bin/flameshot gui -p "$XDG_RUNTIME_DIR/screenshot.png" && \
+              ${pkgs.wl-clipboard}/bin/wl-copy < "$XDG_RUNTIME_DIR/screenshot.png"
+            '';
+
+            # media keys
+            "XF86AudioLowerVolume" = "exec audio-helper ${pkgs.pulsemixer} change -10";
+            "XF86AudioRaiseVolume" = "exec audio-helper ${pkgs.pulsemixer} change +10";
+            "XF86AudioMute" = "exec audio-helper ${pkgs.pulsemixer} mute";
+            "XF86AudioMicMute" = "exec audio-helper ${pkgs.pulsemixer} micmute";
+            "XF86AudioPlay" = "exec audio-helper ${pkgs.mpc-cli} play";
+            "XF86AudioPrev" = "exec audio-helper ${pkgs.mpc-cli} prev";
+            "XF86AudioNext" = "exec audio-helper ${pkgs.mpc-cli} next";
+            "XF86MonBrightnessUp" = "exec brightness-helper ${pkgs.brightnessctl} +10";
+            "XF86MonBrightnessDown" = "exec brightness-helper ${pkgs.brightnessctl} -10";
+
+            # WM
+            "${mod}+f" = "fullscreen";
+            "${mod}+Shift+f" = "floating toggle";
+            "${mod}+h" = "move scratchpad";
+            "${mod}+Shift+h" = "scratchpad show";
+            "${mod}+q" = "kill";
+
+            "${mod}+Tab" = "workspace back_and_forth";
+            "${mod}+space" = "focus mode_toggle";
+
+            "${mod}+Left" = "focus left";
+            "${mod}+Right" = "focus right";
+            "${mod}+Up" = "focus up";
+            "${mod}+Down" = "focus down";
+
+            "${mod}+Shift+Left" = "move left";
+            "${mod}+Shift+Right" = "move right";
+            "${mod}+Shift+Up" = "move up";
+            "${mod}+Shift+Down" = "move down";
+
+            "${mod}+0" = "workspace number 0";
+            "${mod}+1" = "workspace number 1";
+            "${mod}+2" = "workspace number 2";
+            "${mod}+3" = "workspace number 3";
+            "${mod}+4" = "workspace number 4";
+            "${mod}+5" = "workspace number 5";
+            "${mod}+6" = "workspace number 6";
+            "${mod}+7" = "workspace number 7";
+            "${mod}+8" = "workspace number 8";
+            "${mod}+9" = "workspace number 9";
+
+            "${mod}+Shift+0" = "move container to workspace number 0";
+            "${mod}+Shift+1" = "move container to workspace number 1";
+            "${mod}+Shift+2" = "move container to workspace number 2";
+            "${mod}+Shift+3" = "move container to workspace number 3";
+            "${mod}+Shift+4" = "move container to workspace number 4";
+            "${mod}+Shift+5" = "move container to workspace number 5";
+            "${mod}+Shift+6" = "move container to workspace number 6";
+            "${mod}+Shift+7" = "move container to workspace number 7";
+            "${mod}+Shift+8" = "move container to workspace number 8";
+            "${mod}+Shift+9" = "move container to workspace number 9";
+          };
+
+          workspaceAutoBackAndForth = true;
+
+          bars = [ ];
+
+          assigns = {
+            "2" = [{ app_id = "discord"; }];
+            "9" = [{ app_id = "org.keepassxc.KeePassXC"; }];
+          };
+        };
+        extraConfig = ''
+          set $term ${term}
+          for_window [app_id="dropdown.*"] floating enable
+          for_window [app_id="dropdown.*"] resize set 800 400
+        '';
+      };
   };
 }
