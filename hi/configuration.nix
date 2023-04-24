@@ -13,6 +13,9 @@
     kernelPackages = pkgs.linuxPackages_rpi4;
     initrd.checkJournalingFS = false;
     initrd.kernelModules = [ "xhci_pci" "usbhid" "uas" "usb_storage" ];
+    kernelModules = [
+      "i2c-dev"
+    ];
     kernelParams = [
       "8250.nr_uarts=1"
       "console=tty1"
@@ -29,6 +32,7 @@
         disable_overscan=1
         dtparam=sd_poll_once=on
         dtparam=audio=on
+        dtparam=i2c1=on
       '';
     };
     loader.grub.enable = false;
@@ -118,6 +122,10 @@
         };
       };
     };
+
+    udev.extraRules = ''
+      SUBSYSTEM=="i2c-dev", KERNEL=="i2c-1", ACTION=="add", RUN+="${pkgs.bash}/bin/bash -c 'chown ercanar /dev/i2c-1'"
+    '';
   };
 
   xdg.portal = {
